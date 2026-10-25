@@ -131,7 +131,7 @@ function avatarFallback(seed) {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='20' fill='hsl(${hue} 28% 58%)'/><circle cx='20' cy='16' r='7' fill='white' fill-opacity='.92'/><path d='M7 35c2-8 8-11 13-11s11 3 13 11' fill='white' fill-opacity='.92'/></svg>`;
   return "data:image/svg+xml," + encodeURIComponent(svg);
 }
-const staffBadge = uid => uid && S.staff.has(uid) ? h("span", { class: "staff", text: "צוות הקורס" }) : null;
+const staffBadge = uid => uid && S.staff.has(uid) ? h("span", { class: "staff", text: "מתרגל/ת" }) : null;
 const safePhoto = u => typeof u === "string" && /^https:\/\//.test(u) ? u : "";
 // item = a discussion or post: carries authorId, authorName, authorPhoto, createdAt
 function personEl(item, long) {
