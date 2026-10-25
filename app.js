@@ -358,7 +358,9 @@ function confirmBtn(label, fn) {
 }
 function postEl(it, lead) {
   const mine = !!it.authorId && it.authorId === S.me.id;
-  const del = mine || S.me.isAdmin
+  // the author may delete a whole discussion only while nobody else has replied (the rules block deleting others' replies)
+  const othersReplied = lead && (S.postsBy.get(it.id) || []).some(p => p.authorId !== S.me.id);
+  const del = S.me.isAdmin || (mine && !othersReplied)
     ? confirmBtn(lead ? "מחיקת הדיון" : "מחיקה", () => lead ? deleteDiscussion(it) : deletePost(it)) : null;
   return h("article", { class: "post " + (lead ? "lead" : "reply") },
     h("header", { class: "post-head" }, personEl(it, true), del),
