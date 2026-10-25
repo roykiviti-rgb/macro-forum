@@ -51,9 +51,10 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Admins are added by hand in the console; a person may only check their own entry.
+    // Admins (course staff) are added by hand in the console. Everyone signed in may read the list,
+    // so the site can show a "course staff" tag next to their names.
     match /admins/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn();
       allow write: if false;
     }
   }

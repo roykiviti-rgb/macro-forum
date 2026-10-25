@@ -106,6 +106,7 @@ const S = {
   db: null, auth: null,
   auth_state: "pending", // pending | in | out | unconfigured
   me: { id: null, name: "", photo: "", isAdmin: false },
+  staff: new Set(),
   discussions: [], postsBy: new Map(), loadedD: false, dbError: null,
   drafts: [], starred: new Set(),
   view: "list", threadId: null,
@@ -130,6 +131,7 @@ function avatarFallback(seed) {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='20' fill='hsl(${hue} 28% 58%)'/><circle cx='20' cy='16' r='7' fill='white' fill-opacity='.92'/><path d='M7 35c2-8 8-11 13-11s11 3 13 11' fill='white' fill-opacity='.92'/></svg>`;
   return "data:image/svg+xml," + encodeURIComponent(svg);
 }
+const staffBadge = uid => uid && S.staff.has(uid) ? h("span", { class: "staff", text: "צוות הקורס" }) : null;
 const safePhoto = u => typeof u === "string" && /^https:\/\//.test(u) ? u : "";
 // item = a discussion or post: carries authorId, authorName, authorPhoto, createdAt
 function personEl(item, long) {
@@ -137,7 +139,7 @@ function personEl(item, long) {
   img.addEventListener("error", () => { img.src = avatarFallback(item.authorId); }, { once: true });
   return h("div", { class: "person" }, img,
     h("div", { class: "txt" },
-      h("span", { class: "nm", text: item.authorName || "משתתף/ת" }),
+      h("span", { class: "nm" }, item.authorName || "משתתף/ת", staffBadge(item.authorId)),
       h("span", { class: "dt", text: long ? fmtLong(item.createdAt) : fmtShort(item.createdAt) })));
 }
 
@@ -160,7 +162,7 @@ function renderHeader() {
   const me = $("#me");
   if (signedIn()) {
     const img = h("img", { alt: "", referrerpolicy: "no-referrer", src: safePhoto(S.me.photo) || avatarFallback(S.me.id) });
-    me.replaceChildren(img, h("span", { text: S.me.name || "מחובר/ת" }), h("button", { class: "btn link", type: "button", onclick: () => signOut(S.auth), text: "התנתקות" }));
+    me.replaceChildren(img, h("span", { text: S.me.name || "מחובר/ת" }), staffBadge(S.me.id), h("button", { class: "btn link", type: "button", onclick: () => signOut(S.auth), text: "התנתקות" }));
     me.hidden = false;
   } else if (S.auth_state === "out") {
     me.replaceChildren(googleBtn("התחברות"));
@@ -547,13 +549,21 @@ async function onUser(user) {
   if (!user) {
     S.auth_state = "out";
     S.me = { id: null, name: "", photo: "", isAdmin: false };
+    S.staff = new Set();
     resetCompose(); resetReply();
     if (S.view === "compose") go("list"); else renderAll();
     return;
   }
   S.auth_state = "in";
   S.me = { id: user.uid, name: user.displayName || user.email || "", photo: user.photoURL || "", isAdmin: false };
-  getDoc(doc(S.db, "admins", user.uid)).then(s => { S.me.isAdmin = s.exists(); renderAll(); }).catch(() => {});
+  // the admins list doubles as the course staff list; older rules only let people read their own entry
+  unsubs.push(onSnapshot(collection(S.db, "admins"), snap => {
+    S.staff = new Set(snap.docs.map(d => d.id));
+    S.me.isAdmin = S.staff.has(user.uid);
+    renderAll();
+  }, () => {
+    getDoc(doc(S.db, "admins", user.uid)).then(s => { S.me.isAdmin = s.exists(); S.staff = new Set(s.exists() ? [user.uid] : []); renderAll(); }).catch(() => {});
+  }));
   startDb();
   routeFromHash();
 }
