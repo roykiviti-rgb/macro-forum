@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>פורום שאלות מאקרו א׳</title>
+<meta name="description" content="פורום שאלות לקורס מאקרו כלכלה א׳">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div id="app" dir="rtl" lang="he">
+  <header class="masthead">
+    <div class="wrap mast-inner">
+      <div class="crumbs"><span class="course">מאקרו כלכלה א׳ · 57305</span><span class="proto">בטא</span></div>
+      <div class="me" id="me" hidden></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="page">
+
+      <section id="view-list" aria-labelledby="t-forum">
+        <h1 id="t-forum">פורום שאלות</h1>
+        <div class="intro">
+          <p>בפורום זה הסטודנטים רשאים לשאול שאלות הנוגעות לחומר הנלמד, בפרט כאשר אין אפשרות להגיע לשעת הקבלה.</p>
+          <p>כאשר אתם מבקשים עזרה בפתרון שאלה, עליכם להעלות ניסיון פתרון והסבר באיזה חלק התקשיתם. בקשות לפתרון שאלה ללא פירוט זה לא ייענו.</p>
+          <p class="intro-new">כל דיון משויך לשאלה: במבחן (שנה, מועד ושאלה), במרכז למידה או בתרגיל (מספר ושאלה), או לשאלה כללית. אם כבר נפתח דיון על אותה שאלה, הפורום יציע לכם לקרוא אותו לפני שאתם פותחים דיון חדש.</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" id="new-btn" type="button">פתיחת דיון חדש</button>
+          <span class="spacer"></span>
+          <button class="btn plum" id="drafts-btn" type="button">הטיוטות שלי <span class="count" id="drafts-count" hidden></span></button>
+        </div>
+                <form class="filters" id="filters" role="search" aria-label="חיפוש דיונים">
+          <span class="ftitle">חיפוש לפי שאלה</span>
+          <label class="sel">סוג<select id="f-type"></select></label>
+          <span class="fsel" id="f-fields"></span>
+          <label class="sel text">מילים בנושא או בתוכן<input id="f-text" type="search" autocomplete="off" placeholder="למשל: טווח מיידי"></label>
+          <button class="btn link sm" type="button" id="f-clear" hidden>ניקוי החיפוש</button>
+        </form>
+        <div id="list"></div>
+      </section>
+
+      <section id="view-thread" hidden>
+        <button class="back" type="button" data-go="list">→ חזרה לפורום</button>
+        <div id="thread"></div>
+        <form id="reply-form" class="reply" novalidate hidden>
+          <h3>תגובה</h3>
+          <label for="r-body" class="sr">תוכן התגובה</label>
+          <textarea id="r-body" rows="5" placeholder="כתבו תגובה. אפשר להדביק צילום מסך."></textarea>
+          <div class="drop" id="r-drop">
+            <input type="file" id="r-file" accept="image/*" multiple hidden>
+            <button type="button" class="btn ghost sm" id="r-pick">הוספת תמונה</button>
+            <span class="hint">או הדביקו צילום מסך (Ctrl+V), או גררו לכאן</span>
+          </div>
+          <div class="thumbs" id="r-thumbs"></div>
+          <p class="err" id="r-err" hidden></p>
+          <div class="actions"><button class="btn primary" type="submit" id="r-send">שליחת תגובה</button></div>
+        </form>
+      </section>
+
+      <section id="view-compose" hidden aria-labelledby="t-compose">
+        <button class="back" type="button" data-go="list">→ חזרה לפורום</button>
+        <h2 id="t-compose" class="h2">דיון חדש</h2>
+        <form id="compose-form" class="form" novalidate>
+          <p class="note" id="c-draftnote" hidden>ממשיכים מטיוטה שמורה. אחרי הפרסום הטיוטה תימחק.</p>
+          <div class="field">
+            <span class="lbl" id="c-type-lbl">השאלה<span class="req" aria-hidden="true">*</span></span>
+            <div class="qpick">
+              <div class="seg" role="radiogroup" aria-labelledby="c-type-lbl" id="c-type"></div>
+              <div class="picks" id="c-picks"></div>
+              <div id="c-existing" class="existing wait" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="c-subject">נושא<span class="req" aria-hidden="true">*</span></label>
+            <input id="c-subject" type="text" maxlength="140" autocomplete="off" placeholder="במה נתקעתם? למשל: למה LM לא זזה בטווח המיידי">
+          </div>
+          <div class="field">
+            <label for="c-body">הודעה<span class="req" aria-hidden="true">*</span></label>
+            <textarea id="c-body" rows="10" placeholder="כתבו את השאלה, את ניסיון הפתרון שלכם, ובאיזה שלב נתקעתם."></textarea>
+          </div>
+          <div class="field">
+            <span class="lbl">תמונות</span>
+            <div style="display:grid;gap:8px;min-width:0">
+              <div class="drop" id="c-drop">
+                <input type="file" id="c-file" accept="image/*" multiple hidden>
+                <button type="button" class="btn ghost sm" id="c-pick">הוספת תמונה</button>
+                <span class="hint">או הדביקו צילום מסך (Ctrl+V), או גררו לכאן</span>
+              </div>
+              <div class="thumbs" id="c-thumbs"></div>
+            </div>
+          </div>
+          <p class="err" id="c-err" hidden></p>
+          <div class="actions">
+            <button class="btn primary" type="submit" id="c-post">פרסום בפורום</button>
+            <button class="btn plum" type="button" id="c-cancel">ביטול</button>
+            <button class="btn link" type="button" id="c-save">שמירה כטיוטה</button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="overlay" id="dupe" hidden role="dialog" aria-modal="true" aria-labelledby="dupe-title">
+    <div class="sheet" id="dupe-sheet"></div>
+  </div>
+
+  <div class="overlay" id="drafts" hidden role="dialog" aria-modal="true" aria-labelledby="drafts-title">
+    <div class="sheet">
+      <div class="sheet-head"><h3 id="drafts-title">הטיוטות שלי</h3><button class="x" type="button" id="drafts-close" aria-label="סגירה">×</button></div>
+      <div id="drafts-list" style="display:grid;gap:10px"></div>
+    </div>
+  </div>
+
+  <div class="overlay lb" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="תמונה מוגדלת">
+    <button class="lb-close" type="button" id="lb-close" aria-label="סגירה">×</button>
+    <img id="lb-img" alt="תמונה מצורפת">
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</div>
+</body>
+</html>

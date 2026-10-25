@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// Who may read and write what. Paste into Firebase console → Firestore → Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isAuthor(data) { return signedIn() && data.authorId == request.auth.uid; }
+    function shortText(v, max) { return v is string && v.size() <= max; }
+    function validAuthor(d) {
+      return isAuthor(d) && shortText(d.authorName, 200) && shortText(d.authorPhoto, 2000) && d.createdAt is number;
+    }
+    function validImages(d) { return d.images is list && d.images.size() <= 6; }
+    function validRef(r) {
+      return r is map && r.type in ['exam', 'lc', 'ex', 'general']
+        && (r.type != 'exam' || (r.year is int && r.moed in ['א', 'ב', 'ג'] && r.q is int))
+        && (!(r.type in ['lc', 'ex']) || (r.num is int && r.q is int));
+    }
+
+    // Discussions: anyone signed in reads; you create only as yourself; only the author or an admin deletes.
+    match /discussions/{id} {
+      allow read: if signedIn();
+      allow create: if validAuthor(request.resource.data) && validRef(request.resource.data.ref)
+        && shortText(request.resource.data.subject, 140) && request.resource.data.subject.size() > 0
+        && shortText(request.resource.data.body, 20000) && validImages(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthor(resource.data) || isAdmin();
+    }
+
+    // Replies.
+    match /posts/{id} {
+      allow read: if signedIn();
+      allow create: if validAuthor(request.resource.data) && request.resource.data.discussionId is string
+        && shortText(request.resource.data.body, 20000) && validImages(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthor(resource.data) || isAdmin();
+    }
+
+    // Attached images, stored as compressed JPEG data URLs (no Cloud Storage needed).
+    match /images/{id} {
+      allow read: if signedIn();
+      allow create: if isAuthor(request.resource.data) && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000 && request.resource.data.data.matches('^data:image/jpeg;base64,.*');
+      allow update: if false;
+      allow delete: if isAuthor(resource.data) || isAdmin();
+    }
+
+    // Each person's drafts and starred discussions: only that person.
+    match /users/{uid}/{rest=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Admins are added by hand in the console; a person may only check their own entry.
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}
