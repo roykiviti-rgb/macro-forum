@@ -44,8 +44,48 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
 // ---------- question types ----------
 // A discussion's `ref` says which question it is about: {type, ...the fields of that type}.
-const YEARS = range(2010, new Date().getFullYear() + 1).reverse();
 const MOEDS = ["א", "ב", "ג"];
+// The course's past exams, from the exam files in the Macro2027 repo: for each year and moed, its questions in order.
+// A number n means questions numbered 1..n; a list gives each question's title where the exam numbers them differently.
+// To add a new exam, add a line here (e.g. 2027: { "א": 7 }).
+const EXAMS = {
+  2026: { "א": 7, "ב": 7, "ג": 7 },
+  2025: { "א": 7, "ב": 7 },
+  2024: { "א": 7, "ב": 7 },
+  2023: {
+    "א": ["חלק ריאלי · שאלה 1", "חלק ריאלי · שאלה 2", "חלק ריאלי · שאלה 3", "חלק ריאלי · שאלה 4", "חלק ריאלי · שאלה 5",
+          "חלק מוניטרי · שאלה 1 (פיליפס)", "חלק מוניטרי · שאלה 2 (טיילור)", "חלק מוניטרי · שאלה 3", "חלק מוניטרי · שאלה 4"],
+    "ב": ["חלק ריאלי · שאלה 1", "חלק ריאלי · שאלה 2", "חלק ריאלי · שאלה 3", "חלק ריאלי · שאלה 4", "חלק ריאלי · שאלה 5", "חלק ריאלי · שאלה 6",
+          "חלק מוניטרי · שאלה 1 (פיליפס)", "חלק מוניטרי · שאלה 2 (טיילור)", "חלק מוניטרי · שאלה 3", "חלק מוניטרי · שאלה 4"],
+  },
+  2022: {
+    "א": ["שאלה 1", "שאלה 2 · אמריקאיות", "הביקוש לכסף והבנק המרכזי", "מטבעות וירטואליים והיצע הכסף", "עקומת פיליפס", "מודל NKM"],
+    "ב": ["שאלה 1", "שאלה 2 · אמריקאיות", "כסף והבנק המרכזי", "עקומת פיליפס", "מודל NKM"],
+  },
+  2021: {
+    "א": ["שאלה 1", "שאלות אמריקאיות", "כסף והבנק המרכזי", "עקומת פיליפס", "מודל NKM"],
+    "ב": ["שאלה 1", "שאלות אמריקאיות", "כסף והבנק המרכזי", "עקומת פיליפס", "מודל NKM"],
+  },
+  2020: { "א": 6, "ב": 6 },
+  2019: { "א": 6, "ב": 6 },
+  2018: { "א": 6, "ב": 5 },
+};
+const EXAM_YEARS = Object.keys(EXAMS).map(Number).sort((a, b) => b - a);
+const examMoeds = year => EXAMS[year] ? MOEDS.filter(m => m in EXAMS[year]) : [];
+function examQuestions(year, moed) {
+  const e = EXAMS[year] && EXAMS[year][moed];
+  if (e == null) return null;
+  return typeof e === "number" ? range(1, e).map(n => "שאלה " + n) : e;
+}
+const qLabel = (year, moed, q) => { const qs = examQuestions(year, moed); return (qs && qs[q - 1]) || "שאלה " + q; };
+// clears exam choices that the chosen year or moed doesn't have
+function fitExamPick(p) {
+  if (p.type !== "exam") return;
+  if (p.year && !EXAMS[p.year]) p.year = "";
+  if (p.moed && !examMoeds(p.year).includes(p.moed)) p.moed = "";
+  const qs = examQuestions(p.year, p.moed);
+  if (p.q && !(qs && Number(p.q) <= qs.length)) p.q = "";
+}
 const TYPES = {
   exam:    { label: "מבחן",        fields: ["year", "moed", "q"] },
   lc:      { label: "מרכז למידה",  fields: ["num", "q"] },
@@ -53,14 +93,20 @@ const TYPES = {
   general: { label: "שאלה כללית",  fields: [] },
 };
 const TYPE_ORDER = ["exam", "lc", "ex", "general"];
-function fieldSpec(type, f) {
+// ctx holds the other choices (year, moed), so an exam's moeds and questions match what that exam had
+function fieldSpec(type, f, ctx = {}) {
   switch (f) {
-    case "year": return { label: "שנה", all: "כל השנים", values: YEARS, fmt: v => String(v), cmp: (a, b) => b - a };
-    case "moed": return { label: "מועד", all: "כל המועדים", values: MOEDS, fmt: v => "מועד " + v + "׳", cmp: (a, b) => MOEDS.indexOf(a) - MOEDS.indexOf(b) };
+    case "year": return { label: "שנה", all: "כל השנים", values: EXAM_YEARS, fmt: v => String(v), cmp: (a, b) => b - a };
+    case "moed": return { label: "מועד", all: "כל המועדים", values: ctx.year ? examMoeds(ctx.year) : MOEDS, fmt: v => "מועד " + v + "׳", cmp: (a, b) => MOEDS.indexOf(a) - MOEDS.indexOf(b) };
     case "num": return type === "lc"
       ? { label: "מרכז למידה", all: "כל מרכזי הלמידה", values: range(1, 12), fmt: v => "מרכז למידה " + v, cmp: (a, b) => a - b }
       : { label: "תרגיל", all: "כל התרגילים", values: range(1, 10), fmt: v => "תרגיל " + v, cmp: (a, b) => a - b };
-    case "q": return { label: "שאלה", all: "כל השאלות", values: range(1, 10), fmt: v => "שאלה " + v, cmp: (a, b) => a - b };
+    case "q": {
+      const qs = type === "exam" ? examQuestions(ctx.year, ctx.moed) : null;
+      return qs
+        ? { label: "שאלה", all: "כל השאלות", values: range(1, qs.length), fmt: v => qs[v - 1] || "שאלה " + v, cmp: (a, b) => a - b }
+        : { label: "שאלה", all: "כל השאלות", values: range(1, 10), fmt: v => "שאלה " + v, cmp: (a, b) => a - b };
+    }
   }
 }
 function validField(f, v) {
@@ -80,7 +126,7 @@ function toRef(p) {
 const refOf = x => toRef(x && x.ref);
 function refLabel(r) {
   if (!r) return "";
-  if (r.type === "exam") return `מבחן ${r.year} · מועד ${r.moed}׳ · שאלה ${r.q}`;
+  if (r.type === "exam") return `מבחן ${r.year} · מועד ${r.moed}׳ · ${qLabel(r.year, r.moed, r.q)}`;
   if (r.type === "lc") return `מרכז למידה ${r.num} · שאלה ${r.q}`;
   if (r.type === "ex") return `תרגיל ${r.num} · שאלה ${r.q}`;
   return "שאלה כללית";
@@ -162,7 +208,7 @@ function renderHeader() {
   const me = $("#me");
   if (signedIn()) {
     const img = h("img", { alt: "", referrerpolicy: "no-referrer", src: safePhoto(S.me.photo) || avatarFallback(S.me.id) });
-    me.replaceChildren(img, h("span", { text: S.me.name || "מחובר/ת" }), staffBadge(S.me.id), h("button", { class: "btn link", type: "button", onclick: () => signOut(S.auth), text: "התנתקות" }));
+    me.replaceChildren(...[img, h("span", { text: S.me.name || "מחובר/ת" }), staffBadge(S.me.id), h("button", { class: "btn link", type: "button", onclick: () => signOut(S.auth), text: "התנתקות" })].filter(Boolean));
     me.hidden = false;
   } else if (S.auth_state === "out") {
     me.replaceChildren(googleBtn("התחברות"));
@@ -219,7 +265,7 @@ function renderFilters() {
     }));
   }
   for (const f of fields) {
-    const spec = fieldSpec(S.f.type, f);
+    const spec = fieldSpec(S.f.type, f, S.f);
     const counts = countsFor(f);
     if (S.f[f] && !counts.has(S.f[f])) counts.set(S.f[f], 0);
     const vals = [...counts.keys()].map(v => f === "moed" ? v : Number(v)).sort(spec.cmp);
@@ -414,6 +460,7 @@ function setPickType(t) {
   const p = S.compose.pick;
   if (p.type === t) return;
   S.compose.pick = { ...emptyPick(), type: t, q: TYPES[t].fields.includes("q") ? p.q : "" };
+  fitExamPick(S.compose.pick);
   showErr("c", "");
   renderPicks();
   renderExisting();
@@ -423,11 +470,25 @@ function renderPicks() {
   $$("input[name='c-type']").forEach(i => { i.checked = i.value === p.type; });
   const fields = p.type ? TYPES[p.type].fields : [];
   box.replaceChildren(...fields.map(f => {
-    const spec = fieldSpec(p.type, f);
-    const sel = h("select", { id: "c-" + f, required: true, onchange: () => { S.compose.pick[f] = sel.value; showErr("c", ""); renderExisting(); } });
-    fillSelect(sel, [["", "בחירה"], ...spec.values.map(v => [v, spec.fmt(v)])], p[f]);
+    const spec = fieldSpec(p.type, f, p);
+    // an exam's moed waits for the year, and its question for the moed
+    const waiting = p.type === "exam" && ((f === "moed" && !p.year) || (f === "q" && !p.moed));
+    const sel = h("select", { id: "c-" + f, required: true, disabled: waiting, onchange: () => onPickChange(f, sel.value) });
+    fillSelect(sel, [["", waiting ? (f === "moed" ? "קודם שנה" : "קודם מועד") : "בחירה"], ...(waiting ? [] : spec.values.map(v => [v, spec.fmt(v)]))], p[f]);
     return h("label", { class: "sel" }, spec.label, sel);
   }));
+}
+function onPickChange(f, value) {
+  const p = S.compose.pick;
+  p[f] = value;
+  showErr("c", "");
+  if (p.type === "exam" && f !== "q") {
+    fitExamPick(p);
+    renderPicks();
+    const next = $("#c-" + (f === "year" ? "moed" : "q"));
+    if (next && !next.value) next.focus(); else $("#c-" + f).focus();
+  }
+  renderExisting();
 }
 const composeRef = () => toRef(S.compose.pick);
 function missingLabels() {
@@ -708,6 +769,7 @@ function setPick(pick) {
   if (pick && TYPES[pick.type]) {
     S.compose.pick.type = pick.type;
     for (const f of TYPES[pick.type].fields) if (pick[f] != null && pick[f] !== "") S.compose.pick[f] = String(pick[f]);
+    fitExamPick(S.compose.pick);
   }
   renderPicks();
 }
